@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Master A4 Plinth Sketcher (Bug Fixed & Pan Mode)</title>
+    <title>Master A4 Plinth Sketcher (Scale Adjustable & Pan Mode)</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
@@ -63,10 +63,14 @@
         .radio-group { display: flex; gap: 10px; border-left: 2px solid #cbd5e1; padding-left: 10px; margin-left: 5px; }
         .radio-label { font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; }
         
-        /* New Primary Action Toggle (Draw vs Pan) */
         .action-toggle { display: flex; gap: 5px; border-right: 2px solid #cbd5e1; padding-right: 10px; }
         .action-toggle .radio-label { padding: 6px 10px; border-radius: 4px; background: #e2e8f0; }
         .action-toggle input:checked + span { color: #2563eb; }
+
+        /* Custom Scale Slider */
+        .scale-control { display: flex; align-items: center; gap: 5px; border-left: 2px solid #cbd5e1; padding-left: 10px; margin-left: 5px; }
+        .scale-control label { font-size: 11px; margin: 0; font-weight: bold; color: #1e3a8a; }
+        .scale-control input[type="range"] { width: 80px; }
 
         .canvas-wrapper { flex-grow: 1; position: relative; overflow: hidden; background: #94a3b8; }
         canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
@@ -158,8 +162,13 @@
                 <input type="radio" name="drawMode" id="modeAdd" value="add" checked> (+) Area
             </label>
             <label class="radio-label" style="color:#ef4444;">
-                <input type="radio" name="drawMode" id="modeSub" value="sub"> (-) Area (Minus)
+                <input type="radio" name="drawMode" id="modeSub" value="sub"> (-) Area
             </label>
+        </div>
+
+        <div class="scale-control">
+            <label>Scale: 1m = <span id="scaleValueDisplay">25</span>px</label>
+            <input type="range" id="baseScaleInput" min="5" max="80" value="25" oninput="changeBaseScale()" onchange="changeBaseScale()">
         </div>
         
         <button class="tool-btn" style="background:#10b981; color:white; border-color:#10b981;" onclick="triggerPrint()">🖨️ Print</button>
@@ -167,7 +176,7 @@
     
     <div class="canvas-wrapper" id="canvasWrapper">
         <canvas id="mainCanvas"></canvas>
-        <div class="zoom-indicator" id="zoomLevel">Scale: 100%</div>
+        <div class="zoom-indicator" id="zoomLevel">Zoom: 100%</div>
 
         <div id="editPopup" class="edit-popup">
             <h4>Change Dimension</h4>
@@ -202,14 +211,16 @@
 
     const canvas = document.getElementById('mainCanvas');
     const ctx = canvas.getContext('2d');
-    const baseScale = 25; 
+    
+    // Dynamic Base Scale (Pixels per Meter)
+    let baseScale = 25; 
+    
     const A4_WIDTH = 800;
     const A4_HEIGHT = 1131; 
 
     let cameraZoom = 1;
     let cameraPanX = 0;
     let cameraPanY = 0;
-    
     let isCameraPanning = false;
     let startCamPanX = 0, startCamPanY = 0;
     let initialPinchDist = null;
@@ -228,6 +239,29 @@
 
     let isPrintMode = false;
 
+    // --- Change Base Scale (Auto-fit large buildings to A4) ---
+    function changeBaseScale() {
+        const newScale = parseInt(document.getElementById('baseScaleInput').value);
+        if(isNaN(newScale) || newScale < 5 || newScale > 100 || newScale === baseScale) return;
+        
+        const ratio = newScale / baseScale;
+        const cx = A4_WIDTH / 2;
+        const cy = A4_HEIGHT / 2;
+
+        shapes.forEach(s => {
+            s.points.forEach(p => {
+                // Scale points relative to the center of the A4 page
+                p.x = cx + (p.x - cx) * ratio;
+                p.y = cy + (p.y - cy) * ratio;
+            });
+        });
+        
+        baseScale = newScale;
+        document.getElementById('scaleValueDisplay').innerText = baseScale;
+        shapes.forEach(s => rebuildLines(shapes.indexOf(s)));
+        render();
+    }
+
     function toWorldX(screenX) { return (screenX - cameraPanX) / cameraZoom; }
     function toWorldY(screenY) { return (screenY - cameraPanY) / cameraZoom; }
     
@@ -236,7 +270,6 @@
         canvas.width = wrapper.clientWidth;
         canvas.height = wrapper.clientHeight;
         
-        // Auto-scale to fit A4 gracefully on mobile screen launch
         if(canvas.width > 0 && cameraPanX === 0) {
             cameraZoom = (canvas.width * 0.95) / A4_WIDTH;
             if(cameraZoom > 1) cameraZoom = 1; 
@@ -248,13 +281,22 @@
     window.addEventListener('resize', resizeCanvas);
 
     function saveHistory() {
-        historyStack.push(JSON.parse(JSON.stringify(shapes)));
+        historyStack.push({
+            shapes: JSON.parse(JSON.stringify(shapes)),
+            baseScale: baseScale
+        });
         if(historyStack.length > 20) historyStack.shift(); 
     }
 
     function undo() {
         if(historyStack.length > 0) {
-            shapes = historyStack.pop();
+            const state = historyStack.pop();
+            shapes = state.shapes;
+            baseScale = state.baseScale;
+            
+            document.getElementById('baseScaleInput').value = baseScale;
+            document.getElementById('scaleValueDisplay').innerText = baseScale;
+            
             activeS = shapes.length - 1;
             document.getElementById('editPopup').style.display = 'none';
             render();
@@ -268,7 +310,6 @@
             return;
         }
         
-        // Switch back to draw mode automatically
         document.getElementById('modeDraw').checked = true;
         
         const isAdd = document.getElementById('modeAdd').checked;
@@ -310,7 +351,6 @@
     function getDistance(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
     function getMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX)/2, y: (touches[0].clientY + touches[1].clientY)/2 }; }
 
-    // Desktop Wheel Zoom
     canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
         const zoomAmount = e.deltaY > 0 ? 0.9 : 1.1;
@@ -324,11 +364,10 @@
         cameraPanX = mouseX - (worldX * cameraZoom);
         cameraPanY = mouseY - (worldY * cameraZoom);
         
-        document.getElementById('zoomLevel').innerText = `Scale: ${Math.round(cameraZoom * 100)}%`;
+        document.getElementById('zoomLevel').innerText = `Zoom: ${Math.round(cameraZoom * 100)}%`;
         render();
     });
 
-    // Touch & Mouse Listeners
     canvas.addEventListener('mousedown', handleDown);
     canvas.addEventListener('mousemove', handleMove);
     canvas.addEventListener('mouseup', handleUp);
@@ -354,13 +393,11 @@
         
         const isPanMode = document.getElementById('modePan').checked;
 
-        // Force Pan mode if 2 fingers are detected, overriding drawing
         if (e.touches && e.touches.length >= 2) {
             initialPinchDist = getDistance(e.touches);
             initialZoom = cameraZoom;
             isCameraPanning = true; 
-            isDrawing = false; // Cancel any accidental line start
-            
+            isDrawing = false; 
             const mid = getMidpoint(e.touches);
             startCamPanX = (mid.x - rect.left) - cameraPanX;
             startCamPanY = (mid.y - rect.top) - cameraPanY;
@@ -371,7 +408,6 @@
         const screenY = e.touches ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
         const worldX = toWorldX(screenX); const worldY = toWorldY(screenY);
 
-        // If Pan Mode toggle is selected or Right click used
         if (isPanMode || e.button === 2) {
             isCameraPanning = true; 
             startCamPanX = screenX - cameraPanX; 
@@ -381,10 +417,8 @@
 
         const s = shapes[activeS];
         
-        // Prioritize clicking lines to edit
         if (checkLineClick(worldX, worldY)) return; 
 
-        // Prioritize dragging shapes
         let clickedShape = getShapeInsidePoint(worldX, worldY);
         if (clickedShape !== null) {
             draggingShapeIdx = clickedShape;
@@ -392,7 +426,6 @@
             saveHistory(); return;
         }
 
-        // Draw new lines
         if (s && !s.isClosed) {
             saveHistory();
             if (s.points.length === 0) {
@@ -425,7 +458,6 @@
                     removeCollinearPoints(s); 
                     calculateArea(activeS); updateDataSheet();
                 } else {
-                    // Prevent zero-length lines or overlapping collinear points instantly
                     if (s.points.length >= 2) {
                         let prevPt = s.points[s.points.length - 2];
                         let isSameDirX = (lastPt.y === targetY) && (prevPt.y === lastPt.y);
@@ -451,7 +483,6 @@
         if(e.touches) e.preventDefault();
         const rect = canvas.getBoundingClientRect();
         
-        // 2-Finger Pinch Zoom
         if (e.touches && e.touches.length === 2 && initialPinchDist) {
             const newDist = getDistance(e.touches);
             const zoomAmount = newDist / initialPinchDist;
@@ -462,7 +493,7 @@
             cameraZoom = initialZoom * zoomAmount;
             cameraZoom = Math.min(Math.max(0.15, cameraZoom), 4);
             cameraPanX = mouseX - (worldX * cameraZoom); cameraPanY = mouseY - (worldY * cameraZoom);
-            document.getElementById('zoomLevel').innerText = `Scale: ${Math.round(cameraZoom * 100)}%`;
+            document.getElementById('zoomLevel').innerText = `Zoom: ${Math.round(cameraZoom * 100)}%`;
             render(); return;
         }
 
@@ -642,16 +673,13 @@
     }
 
     function render() {
-        // MUST reset transform to completely clear the canvas, fixing any shadow mirror glitches
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Fill outer background
         ctx.fillStyle = '#94a3b8';
         if(isPrintMode) ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Apply camera transforms
         if (!isPrintMode) {
             ctx.translate(cameraPanX, cameraPanY);
             ctx.scale(cameraZoom, cameraZoom);
@@ -660,7 +688,6 @@
             ctx.translate(printOffsetX > 0 ? printOffsetX : 0, 0);
         }
         
-        // Draw A4 Paper Document Layer
         ctx.fillStyle = '#ffffff';
         if (!isPrintMode) {
             ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 15;
@@ -668,14 +695,12 @@
         ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
         ctx.shadowColor = "transparent";
 
-        // Draw Blueprint Grid
         if (!isPrintMode) {
             ctx.strokeStyle = '#f1f5f9'; ctx.lineWidth = 1 / cameraZoom;
             for(let g = 0; g < A4_WIDTH; g += baseScale) { ctx.beginPath(); ctx.moveTo(g, 0); ctx.lineTo(g, A4_HEIGHT); ctx.stroke(); }
             for(let g = 0; g < A4_HEIGHT; g += baseScale) { ctx.beginPath(); ctx.moveTo(0, g); ctx.lineTo(A4_WIDTH, g); ctx.stroke(); }
         }
 
-        // Header Info
         ctx.fillStyle = isPrintMode ? '#000000' : '#0f172a';
         ctx.font = 'bold 16px Arial';
         ctx.textAlign = 'center';
@@ -691,7 +716,6 @@
         ctx.lineWidth = 1.2;
         ctx.strokeRect(20, 20, A4_WIDTH - 40, 100);
 
-        // Drawing Temp Line
         if (isDrawing && shapes[activeS] && !shapes[activeS].isClosed && !isPrintMode) {
             const s = shapes[activeS];
             const startPt = s.points[0];
@@ -725,7 +749,6 @@
             if (isSnappedToStart) { ctx.fillStyle = '#10b981'; ctx.beginPath(); ctx.arc(orthoX, orthoY, 8/cameraZoom, 0, Math.PI*2); ctx.fill(); }
         }
 
-        // Completed Shapes
         shapes.forEach((s, sIdx) => {
             if(!s.isClosed) {
                 ctx.fillStyle = isPrintMode ? '#000000' : '#ef4444';
@@ -798,9 +821,9 @@
         ctx.fillStyle = isPrintMode ? '#000000' : '#475569';
         ctx.font = `bold ${14/(isPrintMode?1:cameraZoom)}px Arial`;
         ctx.textAlign = 'left';
-        ctx.fillText("Scale: 1 Meter = 25 Pixels (Approx)", 30, A4_HEIGHT - 30);
+        ctx.fillText(`Scale: 1 Meter = ${baseScale} Pixels (Approx)`, 30, A4_HEIGHT - 30);
 
-        ctx.setTransform(1, 0, 0, 1, 0, 0); // Clear translation lock
+        ctx.setTransform(1, 0, 0, 1, 0, 0); 
     }
 
     function resetCanvas() {
