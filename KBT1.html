@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Master A4 Plinth Sketcher (Black Print & Minus Area)</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f1f5f9; margin: 0; padding: 0; color: #0f172a; overflow: hidden; touch-action: none; }
+        
+        /* Header & Tabs */
+        .app-header { background: #1e3a8a; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; }
+        .app-header h2 { margin: 0; font-size: 18px; }
+        .tab-bar { display: flex; background: #ffffff; border-bottom: 2px solid #cbd5e1; }
+        .tab-btn { flex: 1; padding: 12px; text-align: center; font-weight: bold; font-size: 15px; cursor: pointer; border: none; background: none; color: #64748b; transition: 0.3s; }
+        .tab-btn.active { color: #1e3a8a; border-bottom: 3px solid #1e3a8a; background: #f8fafc; }
+        
+        /* Layouts */
+        .sheet { display: none; height: calc(100vh - 120px); overflow-y: auto; padding: 15px; }
+        .sheet.active { display: block; }
+        
+        .data-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; max-width: 800px; margin: 0 auto 20px auto; }
+        .data-panel h3 { margin-top: 0; color: #1e3a8a; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; color: #334155; }
+        input[type="text"], textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 14px; outline: none; }
+        .btn { padding: 10px 15px; font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn-success { background: #10b981; color: white; width: 100%; }
+        
+        /* Print Table */
+        .print-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        .print-table th, .print-table td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
+        .print-table th { background: #f1f5f9; color: #1e3a8a; }
+        .total-row { font-weight: bold; background: #e0f2fe; font-size: 16px; color: #1e3a8a; }
+        .minus-row { color: #ef4444; }
+
+        /* Drawing Sheet Toolbar */
+        #drawSheet { padding: 0; position: relative; overflow: hidden; background: #94a3b8; }
+        .toolbar { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; gap: 10px; z-index: 10; flex-wrap: wrap; align-items: center; background: rgba(255,255,255,0.9); padding: 8px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .tool-btn { background: #ffffff; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; color: #1e3a8a; cursor: pointer; }
+        .tool-btn:active { background: #f1f5f9; }
+        
+        /* Radio Controls for Add/Subtract */
+        .radio-group { display: flex; gap: 10px; border-left: 2px solid #cbd5e1; padding-left: 10px; margin-left: 5px; }
+        .radio-label { font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+        
+        canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+
+        /* Edit Popup */
+        .edit-popup { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); background: #ffffff; border: 2px solid #2563eb; padding: 15px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 20; display: none; width: 90%; max-width: 350px; }
+        .edit-popup h4 { margin: 0 0 5px 0; color: #2563eb; font-size: 14px; }
+        .edit-popup p { font-size: 11px; color: #64748b; margin: 0 0 10px 0; }
+        .edit-popup input { width: 100%; padding: 10px; border: 1px solid #94a3b8; border-radius: 5px; font-size: 16px; font-weight: bold; margin-bottom: 10px; text-align: center; }
+        .edit-popup button { width: 100%; padding: 10px; background: #2563eb; color: white; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; }
+
+        .zoom-indicator { position: absolute; bottom: 40px; right: 20px; background: rgba(0,0,0,0.5); color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; z-index: 10; pointer-events: none; }
+        
+        /* Footer Name outside Canvas */
+        .app-footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            padding: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #475569;
+            background: #e2e8f0;
+            border-top: 1px solid #cbd5e1;
+            z-index: 10;
+        }
+
+        /* Strict A4 Print CSS */
+        @media print {
+            @page { size: A4 portrait; margin: 10mm; }
+            body { overflow: visible; background: white; -webkit-print-color-adjust: exact; }
+            .app-header, .tab-bar, .toolbar, .edit-popup, .zoom-indicator { display: none !important; }
+            .sheet { display: block !important; height: auto; overflow: visible; padding: 0; }
+            .data-panel { box-shadow: none; max-width: 100%; padding: 0; margin: 0 0 20px 0; }
+            #drawSheet { background: white; padding-top: 10px; }
+            .btn-success { display: none !important; }
+            canvas { border: 2px solid #000; height: 1050px; width: 100%; max-width: 800px; display: block; margin: 0 auto; }
+            
+            /* Print Name outside the canvas at the absolute bottom of the page */
+            .app-footer {
+                position: fixed;
+                bottom: 0;
+                background: none;
+                border: none;
+                font-size: 12px;
+                color: #000000;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-header">
+    <h2>Village Master Sketcher</h2>
+    <span style="font-size:12px; background:rgba(255,255,255,0.2); padding:4px 8px; border-radius:4px;">A4 Pro Mode</span>
+</div>
+
+<div class="tab-bar">
+    <button class="tab-btn active" id="btnData" onclick="switchTab('data')">1: Details & Report</button>
+    <button class="tab-btn" id="btnDraw" onclick="switchTab('draw')">2: Drawing Board</button>
+</div>
+
+<!-- Sheet 1: Data & Table -->
+<div id="sheetData" class="sheet active">
+    <div class="data-panel">
+        <h3 style="text-align: center; text-transform: uppercase;">Building Plinth Area Sketch & Report</h3>
+        <div class="form-group"><label>Owner's Name</label><input type="text" id="ownerName" value="Owner Name" oninput="render()"></div>
+        <div class="form-group"><label>Address</label><textarea id="ownerAddress" rows="2" oninput="render()">Address Here</textarea></div>
+        <div class="form-group"><label>Survey Number</label><input type="text" id="surveyNo" value="124/2" oninput="render()"></div>
+        
+        <h3 style="margin-top: 25px;">Plinth Area Split-Up Statement</h3>
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th>SL No.</th>
+                    <th>Description (Building/Void)</th>
+                    <th>Area (Sq.M)</th>
+                </tr>
+            </thead>
+            <tbody id="areaTableBody">
+                <tr><td colspan="3" style="text-align:center;">No drawings yet.</td></tr>
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="2" style="text-align: right;">Total Net Plinth Area:</td>
+                    <td id="totalAreaDisplay">0.00 Sq.M</td>
+                </tr>
+            </tfoot>
+        </table>
+        
+        <button class="btn btn-success" style="margin-top: 25px; padding:15px; font-size: 16px;" onclick="triggerPrint()">🖨️ Print Complete Report</button>
+    </div>
+</div>
+
+<!-- Sheet 2: Drawing Canvas -->
+<div id="sheetDraw" class="sheet">
+    <div class="toolbar">
+        <button class="tool-btn" onclick="undo()">↩ Undo</button>
+        <button class="tool-btn" style="color:#047857;" onclick="addNewShape()">+ Add New Shape</button>
+        <button class="tool-btn" style="color:#ef4444;" onclick="resetCanvas()">🗑️ Reset</button>
+        
+        <!-- Add / Subtract Mode Switch -->
+        <div class="radio-group">
+            <label class="radio-label" style="color:#10b981;">
+                <input type="radio" name="drawMode" id="modeAdd" value="add" checked> (+) Area
+            </label>
+            <label class="radio-label" style="color:#ef4444;">
+                <input type="radio" name="drawMode" id="modeSub" value="sub"> (-) Area (Minus)
+            </label>
+        </div>
+        
+        <button class="btn btn-success" style="padding: 6px 12px; margin-left: auto; width: auto;" onclick="triggerPrint()">🖨️ Print</button>
+    </div>
+    
+    <canvas id="mainCanvas"></canvas>
+    
+    <div class="zoom-indicator" id="zoomLevel">Scale: 100%</div>
+
+    <div id="editPopup" class="edit-popup">
+        <h4>Change Dimension (Auto-Adjust)</h4>
+        <p>Use <b>Arrow Keys (➡)</b> or <b>Enter</b> to modify next line.</p>
+        <input type="number" id="lineMeasure" step="0.01">
+        <button onclick="applyMeasurement(true)">Save Changes</button>
+    </div>
+</div>
+
+<!-- Permanent Footer Outside Print Area -->
+<div class="app-footer">
+    Muraleedharan P 9400849115
+</div>
+
+<script>
+    function switchTab(tab) {
+        document.getElementById('btnData').classList.remove('active');
+        document.getElementById('btnDraw').classList.remove('active');
+        document.getElementById('sheetData').classList.remove('active');
+        document.getElementById('sheetDraw').classList.remove('active');
+        
+        if (tab === 'data') {
+            document.getElementById('btnData').classList.add('active');
+            document.getElementById('sheetData').classList.add('active');
+            updateDataSheet();
+        } else {
+            document.getElementById('btnDraw').classList.add('active');
+            document.getElementById('sheetDraw').classList.add('active');
+            resizeCanvas();
+        }
+    }
+
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const baseScale = 25; 
+    const A4_WIDTH = 800;
+    const A4_HEIGHT = 1131; 
+
+    let cameraZoom = 1;
+    let cameraPanX = 0;
+    let cameraPanY = 0;
+    let isCameraPanning = false;
+    let startCamPanX = 0, startCamPanY = 0;
+    let initialPinchDist = null;
+    let initialZoom = 1;
+
+    let shapes = [];
+    let activeS = -1;
+    let historyStack = [];
+
+    let isDrawing = false;
+    let tempWorldX = 0, tempWorldY = 0;
+    let selectedShapeIdx = null;
+    let selectedLineIdx = null;
+    let draggingShapeIdx = null;
+    let dragStartWorldX = 0, dragStartWorldY = 0;
+
+    let isPrintMode = false;
+
+    function toWorldX(screenX) { return (screenX - cameraPanX) / cameraZoom; }
+    function toWorldY(screenY) { return (screenY - cameraPanY) / cameraZoom; }
+    
+    function resizeCanvas() {
+        canvas.width = document.getElementById('sheetDraw').clientWidth;
+        canvas.height = document.getElementById('sheetDraw').clientHeight - 35; // adjust for footer
+        if(cameraPanX === 0) {
+            cameraPanX = (canvas.width - A4_WIDTH) / 2;
+            cameraPanY = 50; 
+        }
+        render();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function saveHistory() {
+        historyStack.push(JSON.parse(JSON.stringify(shapes)));
+        if(historyStack.length > 20) historyStack.shift(); 
+    }
+
+    function undo() {
+        if(historyStack.length > 0) {
+            shapes = historyStack.pop();
+            activeS = shapes.length - 1;
+            document.getElementById('editPopup').style.display = 'none';
+            render();
+            updateDataSheet();
+        }
+    }
+
+    function addNewShape() {
+        if (shapes.length > 0 && !shapes[activeS].isClosed) {
+            alert("ദയവായി നിലവിൽ വരയ്ക്കുന്ന രൂപം പൂർത്തിയാക്കുക!");
+            return;
+        }
+        
+        const isAdd = document.getElementById('modeAdd').checked;
+        const defaultName = isAdd ? "Building Section" : "Courtyard / Void";
+        const name = prompt("ഈ ഭാഗത്തിന്റെ പേര് നൽകുക:", defaultName);
+        if (!name) return;
+        
+        saveHistory();
+        shapes.push({
+            name: name,
+            type: isAdd ? 'add' : 'sub', 
+            points: [],
+            lines: [],
+            isClosed: false,
+            area: 0
+        });
+        activeS = shapes.length - 1;
+        render();
+    }
+
+    function removeCollinearPoints(s) {
+        if (s.points.length < 3) return;
+        let i = 0;
+        while (i < s.points.length) {
+            let p1 = s.points[i];
+            let p2 = s.points[(i + 1) % s.points.length];
+            let p3 = s.points[(i + 2) % s.points.length];
+            
+            let area = p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y);
+            if (Math.abs(area) < 5) { 
+                s.points.splice((i + 1) % s.points.length, 1);
+            } else {
+                i++;
+            }
+        }
+        rebuildLines(shapes.indexOf(s));
+    }
+
+    function getDistance(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
+    function getMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX)/2, y: (touches[0].clientY + touches[1].clientY)/2 }; }
+
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomAmount = e.deltaY > 0 ? 0.9 : 1.1;
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const worldX = toWorldX(mouseX); const worldY = toWorldY(mouseY);
+        
+        cameraZoom *= zoomAmount;
+        cameraZoom = Math.min(Math.max(0.3, cameraZoom), 3); 
+        cameraPanX = mouseX - (worldX * cameraZoom);
+        cameraPanY = mouseY - (worldY * cameraZoom);
+        
+        document.getElementById('zoomLevel').innerText = `Scale: ${Math.round(cameraZoom * 100)}%`;
+        render();
+    });
+
+    canvas.addEventListener('mousedown', handleDown);
+    canvas.addEventListener('mousemove', handleMove);
+    canvas.addEventListener('mouseup', handleUp);
+    canvas.addEventListener('touchstart', handleDown, { passive: false });
+    canvas.addEventListener('touchmove', handleMove, { passive: false });
+    canvas.addEventListener('touchend', handleUp);
+
+    function getShapeInsidePoint(worldX, worldY) {
+        for (let i = shapes.length - 1; i >= 0; i--) {
+            const s = shapes[i];
+            if (!s.isClosed) continue;
+            ctx.beginPath();
+            s.points.forEach((p, idx) => { if (idx === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+            ctx.closePath();
+            if (ctx.isPointInPath(worldX, worldY)) return i;
+        }
+        return null;
+    }
+
+    function handleDown(e) {
+        if(e.touches) e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        
+        if (e.touches && e.touches.length === 2) {
+            initialPinchDist = getDistance(e.touches);
+            initialZoom = cameraZoom;
+            isCameraPanning = true; return;
+        }
+
+        const screenX = e.touches ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
+        const screenY = e.touches ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+        const worldX = toWorldX(screenX); const worldY = toWorldY(screenY);
+
+        if (e.button === 2 || (e.touches && e.touches.length === 3)) { 
+            isCameraPanning = true; startCamPanX = screenX - cameraPanX; startCamPanY = screenY - cameraPanY; return;
+        }
+
+        const s = shapes[activeS];
+        
+        if (checkLineClick(worldX, worldY)) return; 
+
+        let clickedShape = getShapeInsidePoint(worldX, worldY);
+        if (clickedShape !== null) {
+            draggingShapeIdx = clickedShape;
+            dragStartWorldX = worldX; dragStartWorldY = worldY;
+            saveHistory(); return;
+        }
+
+        if (s && !s.isClosed) {
+            saveHistory();
+            if (s.points.length === 0) {
+                s.points.push({ x: worldX, y: worldY });
+                isDrawing = true;
+            } else {
+                const lastPt = s.points[s.points.length - 1];
+                let targetX = worldX, targetY = worldY;
+                
+                const dx = Math.abs(targetX - lastPt.x);
+                const dy = Math.abs(targetY - lastPt.y);
+                if (dx > dy) targetY = lastPt.y; else targetX = lastPt.x; 
+
+                const startPt = s.points[0];
+                let isSnapped = false;
+
+                if (s.points.length > 2) {
+                    if (dx > dy && Math.abs(targetX - startPt.x) < (30/cameraZoom)) targetX = startPt.x;
+                    else if (dx <= dy && Math.abs(targetY - startPt.y) < (30/cameraZoom)) targetY = startPt.y;
+                    
+                    const distToStart = Math.hypot(targetX - startPt.x, targetY - startPt.y);
+                    if (distToStart < (45/cameraZoom)) {
+                        targetX = startPt.x; targetY = startPt.y; isSnapped = true;
+                    }
+                }
+
+                if (isSnapped) {
+                    s.points.push({ x: startPt.x, y: startPt.y });
+                    s.isClosed = true; isDrawing = false;
+                    removeCollinearPoints(s); 
+                    calculateArea(activeS); updateDataSheet();
+                } else {
+                    if (s.points.length >= 2) {
+                        let prevPt = s.points[s.points.length - 2];
+                        let isSameDirX = (lastPt.y === targetY) && (prevPt.y === lastPt.y);
+                        let isSameDirY = (lastPt.x === targetX) && (prevPt.x === lastPt.x);
+                        if (isSameDirX || isSameDirY) {
+                            s.points[s.points.length - 1] = { x: targetX, y: targetY };
+                        } else {
+                            s.points.push({ x: targetX, y: targetY });
+                        }
+                    } else {
+                        s.points.push({ x: targetX, y: targetY });
+                    }
+                    rebuildLines(activeS);
+                }
+            }
+            render();
+        } else if (!s) {
+            addNewShape();
+        }
+    }
+
+    function handleMove(e) {
+        if(e.touches) e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        
+        if (e.touches && e.touches.length === 2 && initialPinchDist) {
+            const newDist = getDistance(e.touches);
+            const zoomAmount = newDist / initialPinchDist;
+            const mid = getMidpoint(e.touches);
+            const mouseX = mid.x - rect.left; const mouseY = mid.y - rect.top;
+            const worldX = (mouseX - cameraPanX) / cameraZoom; const worldY = (mouseY - cameraPanY) / cameraZoom;
+
+            cameraZoom = initialZoom * zoomAmount;
+            cameraZoom = Math.min(Math.max(0.3, cameraZoom), 3);
+            cameraPanX = mouseX - (worldX * cameraZoom); cameraPanY = mouseY - (worldY * cameraZoom);
+            document.getElementById('zoomLevel').innerText = `Scale: ${Math.round(cameraZoom * 100)}%`;
+            render(); return;
+        }
+
+        const screenX = e.touches ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
+        const screenY = e.touches ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+        const worldX = toWorldX(screenX); const worldY = toWorldY(screenY);
+
+        if (isCameraPanning && !e.touches) {
+            cameraPanX = screenX - startCamPanX; cameraPanY = screenY - startCamPanY;
+            render(); return;
+        }
+
+        if (draggingShapeIdx !== null) {
+            let dx = worldX - dragStartWorldX; let dy = worldY - dragStartWorldY;
+            shapes[draggingShapeIdx].points.forEach(p => { p.x += dx; p.y += dy; });
+            rebuildLines(draggingShapeIdx);
+            dragStartWorldX = worldX; dragStartWorldY = worldY;
+            render(); return;
+        }
+
+        if (isDrawing && shapes[activeS] && !shapes[activeS].isClosed) {
+            tempWorldX = worldX; tempWorldY = worldY; render();
+        }
+    }
+
+    function handleUp(e) {
+        isCameraPanning = false; draggingShapeIdx = null; initialPinchDist = null;
+    }
+
+    function rebuildLines(sIdx) {
+        const s = shapes[sIdx];
+        const oldConfirmed = s.lines.map(l => l.isConfirmed);
+        s.lines = [];
+        for (let i = 0; i < s.points.length; i++) {
+            if (i === s.points.length - 1 && !s.isClosed) continue;
+            const p1 = s.points[i]; const p2 = s.points[(i + 1) % s.points.length];
+            s.lines.push({
+                p1: { x: p1.x, y: p1.y }, p2: { x: p2.x, y: p2.y },
+                metricLen: Math.hypot(p2.x - p1.x, p2.y - p1.y) / baseScale,
+                isConfirmed: oldConfirmed[i] || false
+            });
+        }
+    }
+
+    function checkLineClick(worldX, worldY) {
+        const thresh = 15 / cameraZoom; 
+        for (let sIdx = 0; sIdx < shapes.length; sIdx++) {
+            const s = shapes[sIdx];
+            if(!s.isClosed) continue;
+            for (let i = 0; i < s.lines.length; i++) {
+                const l = s.lines[i];
+                if (isNearLine(worldX, worldY, l.p1.x, l.p1.y, l.p2.x, l.p2.y, thresh)) {
+                    selectedShapeIdx = sIdx; selectedLineIdx = i;
+                    updatePopup(); return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function isNearLine(x, y, x1, y1, x2, y2, maxD) {
+        const A = x - x1, B = y - y1, C = x2 - x1, D = y2 - y1;
+        const dot = A*C + B*D, lenSq = C*C + D*D;
+        let param = -1;
+        if (lenSq !== 0) param = dot / lenSq;
+        let xx, yy;
+        if (param < 0) { xx=x1; yy=y1; } else if (param > 1) { xx=x2; yy=y2; } else { xx = x1 + param*C; yy = y1 + param*D; }
+        return Math.hypot(x-xx, y-yy) < maxD;
+    }
+
+    document.getElementById('lineMeasure').addEventListener('keydown', function(e) {
+        if (selectedLineIdx === null || selectedShapeIdx === null) return;
+        const s = shapes[selectedShapeIdx];
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'Enter') {
+            e.preventDefault(); applyMeasurement(false); 
+            selectedLineIdx = (selectedLineIdx + 1) % s.lines.length; updatePopup();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault(); applyMeasurement(false);
+            selectedLineIdx = (selectedLineIdx - 1 + s.lines.length) % s.lines.length; updatePopup();
+        }
+    });
+
+    function updatePopup() {
+        const popup = document.getElementById('editPopup');
+        popup.style.display = 'block';
+        const l = shapes[selectedShapeIdx].lines[selectedLineIdx];
+        document.getElementById('lineMeasure').value = l.metricLen.toFixed(2);
+        document.getElementById('lineMeasure').focus();
+        document.getElementById('lineMeasure').select();
+        render();
+    }
+
+    function applyMeasurement(closePopup = true) {
+        if (selectedLineIdx === null) return;
+        const val = parseFloat(document.getElementById('lineMeasure').value);
+        if (isNaN(val) || val <= 0) return;
+
+        saveHistory(); 
+        
+        const s = shapes[selectedShapeIdx];
+        const l = s.lines[selectedLineIdx];
+        const diffPixels = (val - l.metricLen) * baseScale;
+        
+        if (Math.abs(diffPixels) > 0.1) {
+            const dx = l.p2.x - l.p1.x; const dy = l.p2.y - l.p1.y;
+            const len = Math.hypot(dx, dy);
+            const moveX = (dx / len) * diffPixels; const moveY = (dy / len) * diffPixels;
+
+            const pt1_idx = (selectedLineIdx + 1) % s.points.length;
+            const pt2_idx = (selectedLineIdx + 2) % s.points.length;
+            s.points[pt1_idx].x += moveX; s.points[pt1_idx].y += moveY;
+            s.points[pt2_idx].x += moveX; s.points[pt2_idx].y += moveY;
+        }
+        
+        l.isConfirmed = true;
+        rebuildLines(selectedShapeIdx);
+        calculateArea(selectedShapeIdx);
+        
+        if (closePopup) { document.getElementById('editPopup').style.display = 'none'; selectedLineIdx = null; }
+        render(); updateDataSheet();
+    }
+
+    function calculateArea(sIdx) {
+        const s = shapes[sIdx];
+        if(!s.isClosed) return;
+        let area = 0;
+        for (let i = 0; i < s.lines.length; i++) {
+            area += ((s.lines[i].p1.x/baseScale) * (s.lines[i].p2.y/baseScale)) - ((s.lines[i].p2.x/baseScale) * (s.lines[i].p1.y/baseScale));
+        }
+        s.area = Math.abs(area / 2);
+    }
+
+    function updateDataSheet() {
+        const tbody = document.getElementById('areaTableBody');
+        tbody.innerHTML = '';
+        let grandTotal = 0;
+        let hasData = false;
+
+        shapes.forEach((s, idx) => {
+            if(s.isClosed && s.area > 0) {
+                hasData = true;
+                if (s.type === 'add') {
+                    grandTotal += s.area;
+                    tbody.innerHTML += `<tr>
+                        <td>${idx + 1}</td>
+                        <td style="font-weight:bold; color:#1e3a8a;">${s.name} (+)</td>
+                        <td>${s.area.toFixed(2)}</td>
+                    </tr>`;
+                } else {
+                    grandTotal -= s.area; 
+                    tbody.innerHTML += `<tr class="minus-row">
+                        <td>${idx + 1}</td>
+                        <td style="font-weight:bold;">${s.name} (Minus)</td>
+                        <td>- ${s.area.toFixed(2)}</td>
+                    </tr>`;
+                }
+            }
+        });
+
+        if(!hasData) tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#64748b;">No completed shapes yet.</td></tr>`;
+        document.getElementById('totalAreaDisplay').innerText = grandTotal.toFixed(2) + " Sq.M";
+    }
+
+    function triggerPrint() {
+        isPrintMode = true; 
+        document.getElementById('editPopup').style.display = 'none';
+        selectedLineIdx = null;
+        selectedShapeIdx = null;
+        render(); 
+        
+        window.print();
+        
+        setTimeout(() => {
+            isPrintMode = false;
+            render();
+        }, 1000);
+    }
+
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        
+        if (!isPrintMode) {
+            ctx.translate(cameraPanX, cameraPanY);
+            ctx.scale(cameraZoom, cameraZoom);
+        } else {
+            const printOffsetX = (canvas.width - A4_WIDTH) / 2;
+            ctx.translate(printOffsetX > 0 ? printOffsetX : 0, 0);
+        }
+        
+        ctx.fillStyle = '#ffffff';
+        if (!isPrintMode) {
+            ctx.shadowColor = "rgba(0,0,0,0.2)"; ctx.shadowBlur = 15;
+        }
+        ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
+        ctx.shadowColor = "transparent";
+
+        if (!isPrintMode) {
+            ctx.strokeStyle = '#f1f5f9'; ctx.lineWidth = 1 / cameraZoom;
+            for(let g = 0; g < A4_WIDTH; g += baseScale) { ctx.beginPath(); ctx.moveTo(g, 0); ctx.lineTo(g, A4_HEIGHT); ctx.stroke(); }
+            for(let g = 0; g < A4_HEIGHT; g += baseScale) { ctx.beginPath(); ctx.moveTo(0, g); ctx.lineTo(A4_WIDTH, g); ctx.stroke(); }
+        }
+
+        ctx.fillStyle = isPrintMode ? '#000000' : '#0f172a';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText("BUILDING PLINTH AREA SKETCH", A4_WIDTH / 2, 40);
+        
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`Owner Name : ${document.getElementById('ownerName').value}`, 30, 70);
+        ctx.fillText(`Address    : ${document.getElementById('ownerAddress').value.replace(/\n/g, ", ")}`, 30, 90);
+        ctx.fillText(`Survey No  : ${document.getElementById('surveyNo').value}`, 30, 110);
+        
+        ctx.strokeStyle = isPrintMode ? '#000000' : '#cbd5e1';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(20, 20, A4_WIDTH - 40, 100);
+
+        if (isDrawing && shapes[activeS] && !shapes[activeS].isClosed && !isPrintMode) {
+            const s = shapes[activeS];
+            const startPt = s.points[0];
+            const lastPt = s.points[s.points.length - 1];
+            
+            let orthoX = tempWorldX, orthoY = tempWorldY;
+            const dx = Math.abs(orthoX - lastPt.x); const dy = Math.abs(orthoY - lastPt.y);
+            let showXGuide = false, showYGuide = false; let isSnappedToStart = false;
+
+            if (dx > dy) {
+                orthoY = lastPt.y; 
+                if (s.points.length > 2 && Math.abs(orthoX - startPt.x) < (30/cameraZoom)) { orthoX = startPt.x; showYGuide = true; }
+            } else {
+                orthoX = lastPt.x; 
+                if (s.points.length > 2 && Math.abs(orthoY - startPt.y) < (30/cameraZoom)) { orthoY = startPt.y; showXGuide = true; }
+            }
+
+            if (s.points.length > 2 && Math.hypot(orthoX - startPt.x, orthoY - startPt.y) < (45/cameraZoom)) {
+                orthoX = startPt.x; orthoY = startPt.y; isSnappedToStart = true;
+            }
+
+            ctx.lineWidth = 1.5 / cameraZoom; ctx.setLineDash([5/cameraZoom, 5/cameraZoom]);
+            if (showYGuide || isSnappedToStart) { ctx.strokeStyle = '#f97316'; ctx.beginPath(); ctx.moveTo(startPt.x, -10000); ctx.lineTo(startPt.x, 10000); ctx.stroke(); }
+            if (showXGuide || isSnappedToStart) { ctx.strokeStyle = '#f97316'; ctx.beginPath(); ctx.moveTo(-10000, startPt.y); ctx.lineTo(10000, startPt.y); ctx.stroke(); }
+            
+            ctx.strokeStyle = isSnappedToStart ? '#10b981' : '#eab308';
+            ctx.lineWidth = 2.5 / cameraZoom;
+            ctx.beginPath(); ctx.moveTo(lastPt.x, lastPt.y); ctx.lineTo(orthoX, orthoY); ctx.stroke();
+            ctx.setLineDash([]);
+            
+            if (isSnappedToStart) { ctx.fillStyle = '#10b981'; ctx.beginPath(); ctx.arc(orthoX, orthoY, 8/cameraZoom, 0, Math.PI*2); ctx.fill(); }
+        }
+
+        shapes.forEach((s, sIdx) => {
+            if(!s.isClosed) {
+                ctx.fillStyle = isPrintMode ? '#000000' : '#ef4444';
+                s.points.forEach((pt, idx) => { ctx.beginPath(); ctx.arc(pt.x, pt.y, (idx===0?5:3)/(isPrintMode?1:cameraZoom), 0, Math.PI*2); ctx.fill(); });
+            } else {
+                ctx.beginPath();
+                s.points.forEach((p, idx) => { if(idx===0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+                ctx.closePath();
+                
+                if (isPrintMode) {
+                    if (s.type === 'sub') {
+                        ctx.fillStyle = 'rgba(255,255,255,1)'; ctx.fill();
+                        ctx.strokeStyle = '#000000'; ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(s.points[0].x, s.points[0].y); ctx.lineTo(s.points[2]?.x || s.points[1].x, s.points[2]?.y || s.points[1].y);
+                        ctx.stroke();
+                    } else {
+                        ctx.fillStyle = 'rgba(255,255,255,1)'; ctx.fill(); 
+                    }
+                } else {
+                    ctx.fillStyle = s.type === 'add' ? 'rgba(30, 58, 138, 0.05)' : 'rgba(239, 68, 68, 0.08)';
+                    ctx.fill();
+                }
+                
+                const minX = Math.min(...s.points.map(p=>p.x)), maxX = Math.max(...s.points.map(p=>p.x));
+                const minY = Math.min(...s.points.map(p=>p.y)), maxY = Math.max(...s.points.map(p=>p.y));
+                ctx.fillStyle = isPrintMode ? '#000000' : (s.type === 'add' ? '#1e3a8a' : '#ef4444');
+                ctx.font = `bold ${16/(isPrintMode?1:cameraZoom)}px Arial`; ctx.textAlign = 'center';
+                ctx.fillText(s.name + (s.type === 'sub' ? ' (Void)' : ''), (minX+maxX)/2, (minY+maxY)/2);
+            }
+
+            s.lines.forEach((l, lIdx) => {
+                if (isPrintMode) {
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = s.type === 'sub' ? 1.5 : 2.5;
+                    if (s.type === 'sub') ctx.setLineDash([5, 5]); else ctx.setLineDash([]);
+                } else {
+                    if (selectedShapeIdx === sIdx && selectedLineIdx === lIdx) {
+                        ctx.strokeStyle = '#f97316'; ctx.lineWidth = 5 / cameraZoom; ctx.setLineDash([]);
+                    } else {
+                        ctx.strokeStyle = l.isConfirmed ? '#2563eb' : (s.type === 'sub' ? '#ef4444' : '#334155'); 
+                        ctx.lineWidth = l.isConfirmed ? (3/cameraZoom) : (2/cameraZoom);
+                        if (s.type === 'sub') ctx.setLineDash([5/cameraZoom, 5/cameraZoom]); else ctx.setLineDash([]);
+                    }
+                }
+                
+                ctx.beginPath(); ctx.moveTo(l.p1.x, l.p1.y); ctx.lineTo(l.p2.x, l.p2.y); ctx.stroke();
+                ctx.setLineDash([]); 
+                
+                const midX = (l.p1.x + l.p2.x)/2, midY = (l.p1.y + l.p2.y)/2;
+                const txt = `${l.metricLen.toFixed(2)}m`;
+                const fontSize = 12 / (isPrintMode ? 1 : cameraZoom);
+                ctx.font = `bold ${fontSize}px Arial`;
+                const tW = ctx.measureText(txt).width;
+                
+                if (!isPrintMode) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.8)'; 
+                    ctx.fillRect(midX - tW/2 - (2/cameraZoom), midY - (14/cameraZoom), tW + (4/cameraZoom), (14/cameraZoom));
+                } else {
+                    ctx.fillStyle = '#ffffff'; 
+                    ctx.fillRect(midX - tW/2 - 2, midY - 14, tW + 4, 14);
+                }
+                
+                ctx.fillStyle = isPrintMode ? '#000000' : (l.isConfirmed ? '#2563eb' : '#000');
+                ctx.textAlign = 'center';
+                ctx.fillText(txt, midX, midY - (2/(isPrintMode?1:cameraZoom)));
+            });
+        });
+
+        ctx.fillStyle = isPrintMode ? '#000000' : '#475569';
+        ctx.font = `bold ${14/(isPrintMode?1:cameraZoom)}px Arial`;
+        ctx.textAlign = 'left';
+        ctx.fillText("Scale: 1 Meter = 25 Pixels (Approx)", 30, A4_HEIGHT - 30);
+
+        ctx.restore();
+    }
+
+    function resetCanvas() {
+        if(confirm("എല്ലാം മായ്ച്ചു പുതിയത് വരയ്ക്കണമെന്നുറപ്പാണോ?")) {
+            saveHistory(); shapes = []; document.getElementById('editPopup').style.display = 'none';
+            document.getElementById('modeAdd').checked = true; 
+            addNewShape(); updateDataSheet(); render();
+        }
+    }
+
+    initApp();
+    setTimeout(resizeCanvas, 100);
+
+</script>
+</body>
+</html>
