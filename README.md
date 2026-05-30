@@ -1,4 +1,4 @@
-
+https://villageoffice.github.io/KBT-Drawing/
 ​1. അടിസ്ഥാന വിവരങ്ങൾ നൽകൽ (Sheet 1: Details & Report)
 ​ടൂൾ തുറക്കുമ്പോൾ ആദ്യം കാണുന്നത് Sheet 1 ആണ്.
 ​ഇവിടെ ഉടമസ്ഥന്റെ പേര് (Owner's Name), മേൽവിലാസം (Address), സർവേ നമ്പർ (Survey Number) എന്നിവ ടൈപ്പ് ചെയ്തു കൊടുക്കുക.
