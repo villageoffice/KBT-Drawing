@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Master A4 Plinth Sketcher (Scale Adjustable & Pan Mode)</title>
+    <title>Master A4 Plinth Sketcher (1-Page Print Fit)</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
@@ -33,41 +33,34 @@
         .sheet.active { display: flex; }
         
         #sheetData { overflow-y: auto; padding: 15px; }
-        .data-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; max-width: 800px; margin: 0 auto 20px auto; width: 100%; }
-        .data-panel h3 { margin-top: 0; color: #1e3a8a; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; color: #334155; }
+        .data-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; max-width: 800px; margin: 0 auto; width: 100%; }
+        .data-panel h3 { margin-top: 0; color: #1e3a8a; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; font-size: 15px; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #334155; }
         input[type="text"], textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 14px; outline: none; }
-        .btn { padding: 10px 15px; font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn { padding: 12px 15px; font-size: 15px; font-weight: bold; border-radius: 5px; cursor: pointer; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .btn-success { background: #10b981; color: white; width: 100%; }
-        
-        .print-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-        .print-table th, .print-table td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
-        .print-table th { background: #f1f5f9; color: #1e3a8a; }
-        .total-row { font-weight: bold; background: #e0f2fe; font-size: 15px; color: #1e3a8a; }
-        .minus-row { color: #ef4444; }
 
         #sheetDraw { background: #94a3b8; }
         
+        /* Mobile Scrollable Toolbar */
         .toolbar { 
-            flex-shrink: 0; display: flex; gap: 10px; align-items: center; 
+            flex-shrink: 0; display: flex; gap: 8px; align-items: center; 
             background: #ffffff; padding: 10px; border-bottom: 1px solid #cbd5e1; 
             overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch;
         }
-        .toolbar::-webkit-scrollbar { height: 4px; }
-        .toolbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .toolbar::-webkit-scrollbar { height: 0px; display: none; }
         
-        .tool-btn { background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 6px; font-weight: bold; font-size: 13px; color: #1e3a8a; cursor: pointer; white-space: nowrap; }
+        .tool-btn { background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 6px; font-weight: bold; font-size: 13px; color: #1e3a8a; cursor: pointer; }
         .tool-btn:active { background: #e2e8f0; }
         
-        .radio-group { display: flex; gap: 10px; border-left: 2px solid #cbd5e1; padding-left: 10px; margin-left: 5px; }
-        .radio-label { font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; }
+        .radio-group { display: flex; gap: 8px; border-left: 2px solid #cbd5e1; padding-left: 10px; margin-left: 5px; }
+        .radio-label { font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 4px; cursor: pointer; }
         
         .action-toggle { display: flex; gap: 5px; border-right: 2px solid #cbd5e1; padding-right: 10px; }
         .action-toggle .radio-label { padding: 6px 10px; border-radius: 4px; background: #e2e8f0; }
         .action-toggle input:checked + span { color: #2563eb; }
 
-        /* Custom Scale Slider */
         .scale-control { display: flex; align-items: center; gap: 5px; border-left: 2px solid #cbd5e1; padding-left: 10px; margin-left: 5px; }
         .scale-control label { font-size: 11px; margin: 0; font-weight: bold; color: #1e3a8a; }
         .scale-control input[type="range"] { width: 80px; }
@@ -85,17 +78,40 @@
         
         .app-footer { background: #e2e8f0; text-align: center; padding: 8px; font-size: 13px; font-weight: bold; color: #475569; border-top: 1px solid #cbd5e1; }
 
+        /* Hidden Footer solely for A4 Print Layout */
+        .print-only-footer { display: none; }
+        #printOutput { display: none; }
+
+        /* STRICT ONE-PAGE A4 PRINT CSS */
         @media print {
-            @page { size: A4 portrait; margin: 10mm; }
-            body { overflow: visible; background: white; -webkit-print-color-adjust: exact; display: block; height: auto; }
-            .app-header, .tab-bar, .toolbar, .edit-popup, .zoom-indicator, .app-footer { display: none !important; }
-            .sheet { display: block !important; height: auto; overflow: visible; padding: 0; }
-            .data-panel { box-shadow: none; max-width: 100%; padding: 0; margin: 0 0 20px 0; }
-            .canvas-wrapper { overflow: visible; background: white; }
-            #sheetDraw { background: white; padding-top: 10px; }
-            .btn-success { display: none !important; }
-            canvas { border: 2px solid #000; height: 1050px; width: 100%; max-width: 800px; display: block; margin: 0 auto; }
-            body::after { content: "Muraleedharan P 9400849115"; position: fixed; bottom: 5mm; left: 0; width: 100%; text-align: center; font-size: 12px; font-weight: bold; color: #000; }
+            /* ബ്രൗസറിന്റെ ഡീഫോൾട്ട് മാർജിൻ പൂർണ്ണമായും 0 ആക്കി മാറ്റുന്നു, അപ്പോൾ നമ്മുടെ 0.75 ഇഞ്ച് കറക്ട് ആയി വരും */
+            @page { size: A4 portrait; margin: 0 !important; }
+            
+            html, body { 
+                width: 210mm; height: 297mm; overflow: hidden !important; 
+                background: white !important; margin: 0 !important; padding: 0 !important;
+                display: block !important;
+                -webkit-print-color-adjust: exact;
+            }
+            
+            .app-header, .tab-bar, .toolbar, .edit-popup, .zoom-indicator, .app-footer, .btn, .hide-in-print { display: none !important; }
+            .sheet { display: block !important; height: auto !important; overflow: hidden !important; padding: 0 !important; page-break-inside: avoid; }
+            .data-panel { box-shadow: none !important; padding: 0 10px !important; margin: 0 0 10px 0 !important; max-width: 100% !important; }
+            
+            #sheetDraw { background: white !important; padding: 0 !important; }
+            .canvas-wrapper { overflow: hidden !important; background: white !important; text-align: center; }
+            
+            canvas { display: none !important; }
+            #printOutput { 
+                display: block !important; 
+                width: 210mm !important; 
+                height: 297mm !important; 
+                margin: 0 !important; 
+                border: none !important; 
+                object-fit: cover !important;
+            }
+            
+            .print-only-footer { display: none !important; }
         }
     </style>
 </head>
@@ -103,42 +119,23 @@
 
 <div class="app-header">
     <h2>Village Master Sketcher</h2>
-    <span style="font-size:12px; background:rgba(255,255,255,0.2); padding:4px 8px; border-radius:4px;">A4 Pro</span>
+    <span style="font-size:12px; background:rgba(255,255,255,0.2); padding:4px 8px; border-radius:4px;">A4 Fit</span>
 </div>
 
 <div class="tab-bar">
-    <button class="tab-btn active" id="btnData" onclick="switchTab('data')">1: Details & Report</button>
+    <button class="tab-btn active" id="btnData" onclick="switchTab('data')">1: Details</button>
     <button class="tab-btn" id="btnDraw" onclick="switchTab('draw')">2: Drawing Board</button>
 </div>
 
 <div id="sheetData" class="sheet active">
     <div class="data-panel">
-        <h3 style="text-align: center; text-transform: uppercase;">Building Plinth Area Sketch</h3>
-        <div class="form-group"><label>Owner's Name</label><input type="text" id="ownerName" value="Owner Name" oninput="render()"></div>
-        <div class="form-group"><label>Address</label><textarea id="ownerAddress" rows="2" oninput="render()">Address Here</textarea></div>
-        <div class="form-group"><label>Survey Number</label><input type="text" id="surveyNo" value="124/2" oninput="render()"></div>
+        <h3 class="hide-in-print" style="text-align: center; text-transform: uppercase;">Client Details</h3>
+        <div class="form-group hide-in-print"><label>Owner's Name</label><input type="text" id="ownerName" value="Owner Name" oninput="render()"></div>
+        <div class="form-group hide-in-print"><label>Address</label><textarea id="ownerAddress" rows="2" oninput="render()">Address Here</textarea></div>
+        <div class="form-group hide-in-print"><label>Survey Number</label><input type="text" id="surveyNo" value="124/2" oninput="render()"></div>
         
-        <h3 style="margin-top: 25px;">Plinth Area Split-Up Statement</h3>
-        <table class="print-table">
-            <thead>
-                <tr>
-                    <th>SL No.</th>
-                    <th>Description</th>
-                    <th>Area (Sq.M)</th>
-                </tr>
-            </thead>
-            <tbody id="areaTableBody">
-                <tr><td colspan="3" style="text-align:center;">No drawings yet.</td></tr>
-            </tbody>
-            <tfoot>
-                <tr class="total-row">
-                    <td colspan="2" style="text-align: right;">Total Net Plinth:</td>
-                    <td id="totalAreaDisplay">0.00 Sq.M</td>
-                </tr>
-            </tfoot>
-        </table>
-        
-        <button class="btn btn-success" style="margin-top: 25px; padding:15px; font-size: 16px;" onclick="triggerPrint()">🖨️ Print Complete Report</button>
+        <p style="color:#64748b; font-size:13px; text-align:center;">ഏരിയ ടേബിൾ ഇപ്പോൾ ഡ്രോയിംഗ് ഷീറ്റിൽ താഴെ ഇടതുവശത്തായി നേരിട്ട് കാണാവുന്നതാണ്.</p>
+        <button class="btn btn-success" style="margin-top: 15px; padding:15px; font-size: 16px;" onclick="switchTab('draw')">➡️ Go to Drawing Board</button>
     </div>
 </div>
 
@@ -149,13 +146,16 @@
                 <input type="radio" name="toolMode" id="modeDraw" value="draw" checked> <span>✏️ Draw (വരയ്ക്കുക)</span>
             </label>
             <label class="radio-label">
-                <input type="radio" name="toolMode" id="modePan" value="pan"> <span>✋ Move Page (നീക്കുക)</span>
+                <input type="radio" name="toolMode" id="modeMoveBlock" value="move"> <span>🤚 Move Block</span>
+            </label>
+            <label class="radio-label">
+                <input type="radio" name="toolMode" id="modePan" value="pan"> <span>✋ Page</span>
             </label>
         </div>
 
         <button class="tool-btn" onclick="undo()">↩ Undo</button>
-        <button class="tool-btn" style="color:#047857;" onclick="addNewShape()">+ Add New Block</button>
-        <button class="tool-btn" style="color:#ef4444;" onclick="resetCanvas()">🗑️ Reset</button>
+        <button class="tool-btn" style="color:#047857;" onclick="addNewShape()">+ Add Block</button>
+        <button class="tool-btn" style="color:#ef4444;" onclick="resetCanvas()">🗑️ Clear</button>
         
         <div class="radio-group">
             <label class="radio-label" style="color:#10b981;">
@@ -176,7 +176,8 @@
     
     <div class="canvas-wrapper" id="canvasWrapper">
         <canvas id="mainCanvas"></canvas>
-        <div class="zoom-indicator" id="zoomLevel">Zoom: 100%</div>
+        <img id="printOutput" alt="Print Render">
+        <div class="zoom-indicator" id="zoomLevel">Scale: 100%</div>
 
         <div id="editPopup" class="edit-popup">
             <h4>Change Dimension</h4>
@@ -201,7 +202,6 @@
         if (tab === 'data') {
             document.getElementById('btnData').classList.add('active');
             document.getElementById('sheetData').classList.add('active');
-            updateDataSheet();
         } else {
             document.getElementById('btnDraw').classList.add('active');
             document.getElementById('sheetDraw').classList.add('active');
@@ -211,10 +211,7 @@
 
     const canvas = document.getElementById('mainCanvas');
     const ctx = canvas.getContext('2d');
-    
-    // Dynamic Base Scale (Pixels per Meter)
     let baseScale = 25; 
-    
     const A4_WIDTH = 800;
     const A4_HEIGHT = 1131; 
 
@@ -239,7 +236,6 @@
 
     let isPrintMode = false;
 
-    // --- Change Base Scale (Auto-fit large buildings to A4) ---
     function changeBaseScale() {
         const newScale = parseInt(document.getElementById('baseScaleInput').value);
         if(isNaN(newScale) || newScale < 5 || newScale > 100 || newScale === baseScale) return;
@@ -250,7 +246,6 @@
 
         shapes.forEach(s => {
             s.points.forEach(p => {
-                // Scale points relative to the center of the A4 page
                 p.x = cx + (p.x - cx) * ratio;
                 p.y = cy + (p.y - cy) * ratio;
             });
@@ -300,7 +295,6 @@
             activeS = shapes.length - 1;
             document.getElementById('editPopup').style.display = 'none';
             render();
-            updateDataSheet();
         }
     }
 
@@ -309,12 +303,11 @@
             alert("ദയവായി നിലവിൽ വരയ്ക്കുന്ന രൂപം പൂർത്തിയാക്കുക!");
             return;
         }
-        
         document.getElementById('modeDraw').checked = true;
         
         const isAdd = document.getElementById('modeAdd').checked;
-        const defaultName = isAdd ? "Building Section" : "Courtyard / Void";
-        const name = prompt("ഈ ഭാഗത്തിന്റെ പേര് നൽകുക:", defaultName);
+        const defaultName = isAdd ? "Ground Floor" : "Courtyard";
+        const name = prompt("ഈ ഭാഗത്തിന്റെ പേര് നൽകുക (ഉദാ: Ground Floor, First Floor, Courtyard):", defaultName);
         if (!name) return;
         
         saveHistory();
@@ -341,9 +334,7 @@
             let area = p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y);
             if (Math.abs(area) < 5) { 
                 s.points.splice((i + 1) % s.points.length, 1);
-            } else {
-                i++;
-            }
+            } else { i++; }
         }
         rebuildLines(shapes.indexOf(s));
     }
@@ -355,77 +346,92 @@
         e.preventDefault();
         const zoomAmount = e.deltaY > 0 ? 0.9 : 1.1;
         const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
+        const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
         const worldX = toWorldX(mouseX); const worldY = toWorldY(mouseY);
         
         cameraZoom *= zoomAmount;
         cameraZoom = Math.min(Math.max(0.15, cameraZoom), 4); 
-        cameraPanX = mouseX - (worldX * cameraZoom);
-        cameraPanY = mouseY - (worldY * cameraZoom);
+        cameraPanX = mouseX - (worldX * cameraZoom); cameraPanY = mouseY - (worldY * cameraZoom);
         
-        document.getElementById('zoomLevel').innerText = `Zoom: ${Math.round(cameraZoom * 100)}%`;
+        document.getElementById('zoomLevel').innerText = `Scale: ${Math.round(cameraZoom * 100)}%`;
         render();
     });
 
+    // മൗസ് / ടച്ച് ഇവന്റുകൾ
     canvas.addEventListener('mousedown', handleDown);
     canvas.addEventListener('mousemove', handleMove);
     canvas.addEventListener('mouseup', handleUp);
+    canvas.addEventListener('mouseleave', handleUp);
+    
     canvas.addEventListener('touchstart', handleDown, { passive: false });
     canvas.addEventListener('touchmove', handleMove, { passive: false });
     canvas.addEventListener('touchend', handleUp);
+    canvas.addEventListener('touchcancel', handleUp);
+
+    function isPointInPolygon(point, vs) {
+        let x = point.x, y = point.y;
+        let inside = false;
+        for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+            let xi = vs[i].x, yi = vs[i].y;
+            let xj = vs[j].x, yj = vs[j].y;
+            let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
 
     function getShapeInsidePoint(worldX, worldY) {
         for (let i = shapes.length - 1; i >= 0; i--) {
             const s = shapes[i];
             if (!s.isClosed) continue;
-            ctx.beginPath();
-            s.points.forEach((p, idx) => { if (idx === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
-            ctx.closePath();
-            if (ctx.isPointInPath(worldX, worldY)) return i;
+            if (isPointInPolygon({x: worldX, y: worldY}, s.points)) {
+                return i;
+            }
         }
         return null;
     }
 
     function handleDown(e) {
-        if(e.touches) e.preventDefault();
+        if(e.touches && e.touches.length > 0) e.preventDefault();
         const rect = canvas.getBoundingClientRect();
-        
-        const isPanMode = document.getElementById('modePan').checked;
+        const toolMode = document.querySelector('input[name="toolMode"]:checked').value;
 
         if (e.touches && e.touches.length >= 2) {
-            initialPinchDist = getDistance(e.touches);
-            initialZoom = cameraZoom;
-            isCameraPanning = true; 
-            isDrawing = false; 
+            initialPinchDist = getDistance(e.touches); initialZoom = cameraZoom;
+            isCameraPanning = true; isDrawing = false; 
             const mid = getMidpoint(e.touches);
-            startCamPanX = (mid.x - rect.left) - cameraPanX;
-            startCamPanY = (mid.y - rect.top) - cameraPanY;
+            startCamPanX = (mid.x - rect.left) - cameraPanX; startCamPanY = (mid.y - rect.top) - cameraPanY;
             return;
         }
 
-        const screenX = e.touches ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-        const screenY = e.touches ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
-        const worldX = toWorldX(screenX); const worldY = toWorldY(screenY);
+        const clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+        const clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
+        const screenX = clientX - rect.left;
+        const screenY = clientY - rect.top;
+        const worldX = toWorldX(screenX); 
+        const worldY = toWorldY(screenY);
 
-        if (isPanMode || e.button === 2) {
+        if (toolMode === 'pan' || e.button === 2) {
             isCameraPanning = true; 
-            startCamPanX = screenX - cameraPanX; 
-            startCamPanY = screenY - cameraPanY; 
+            startCamPanX = screenX - cameraPanX; startCamPanY = screenY - cameraPanY; 
             return;
         }
 
-        const s = shapes[activeS];
-        
+        if (toolMode === 'move') {
+            let clickedShape = getShapeInsidePoint(worldX, worldY);
+            if (clickedShape !== null) {
+                draggingShapeIdx = clickedShape;
+                dragStartWorldX = worldX; 
+                dragStartWorldY = worldY;
+                saveHistory(); 
+                canvas.style.cursor = "grabbing";
+            }
+            return; 
+        }
+
         if (checkLineClick(worldX, worldY)) return; 
 
-        let clickedShape = getShapeInsidePoint(worldX, worldY);
-        if (clickedShape !== null) {
-            draggingShapeIdx = clickedShape;
-            dragStartWorldX = worldX; dragStartWorldY = worldY;
-            saveHistory(); return;
-        }
-
+        const s = shapes[activeS];
         if (s && !s.isClosed) {
             saveHistory();
             if (s.points.length === 0) {
@@ -435,8 +441,7 @@
                 const lastPt = s.points[s.points.length - 1];
                 let targetX = worldX, targetY = worldY;
                 
-                const dx = Math.abs(targetX - lastPt.x);
-                const dy = Math.abs(targetY - lastPt.y);
+                const dx = Math.abs(targetX - lastPt.x); const dy = Math.abs(targetY - lastPt.y);
                 if (dx > dy) targetY = lastPt.y; else targetX = lastPt.x; 
 
                 const startPt = s.points[0];
@@ -456,7 +461,7 @@
                     s.points.push({ x: startPt.x, y: startPt.y });
                     s.isClosed = true; isDrawing = false;
                     removeCollinearPoints(s); 
-                    calculateArea(activeS); updateDataSheet();
+                    calculateArea(activeS);
                 } else {
                     if (s.points.length >= 2) {
                         let prevPt = s.points[s.points.length - 2];
@@ -480,7 +485,7 @@
     }
 
     function handleMove(e) {
-        if(e.touches) e.preventDefault();
+        if(e.touches && e.touches.length > 0) e.preventDefault();
         const rect = canvas.getBoundingClientRect();
         
         if (e.touches && e.touches.length === 2 && initialPinchDist) {
@@ -493,13 +498,16 @@
             cameraZoom = initialZoom * zoomAmount;
             cameraZoom = Math.min(Math.max(0.15, cameraZoom), 4);
             cameraPanX = mouseX - (worldX * cameraZoom); cameraPanY = mouseY - (worldY * cameraZoom);
-            document.getElementById('zoomLevel').innerText = `Zoom: ${Math.round(cameraZoom * 100)}%`;
+            document.getElementById('zoomLevel').innerText = `Scale: ${Math.round(cameraZoom * 100)}%`;
             render(); return;
         }
 
-        const screenX = e.touches ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-        const screenY = e.touches ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
-        const worldX = toWorldX(screenX); const worldY = toWorldY(screenY);
+        const clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+        const clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
+        const screenX = clientX - rect.left;
+        const screenY = clientY - rect.top;
+        const worldX = toWorldX(screenX); 
+        const worldY = toWorldY(screenY);
 
         if (isCameraPanning) {
             cameraPanX = screenX - startCamPanX; cameraPanY = screenY - startCamPanY;
@@ -507,11 +515,19 @@
         }
 
         if (draggingShapeIdx !== null) {
-            let dx = worldX - dragStartWorldX; let dy = worldY - dragStartWorldY;
-            shapes[draggingShapeIdx].points.forEach(p => { p.x += dx; p.y += dy; });
+            let dx = worldX - dragStartWorldX; 
+            let dy = worldY - dragStartWorldY;
+            
+            shapes[draggingShapeIdx].points.forEach(p => { 
+                p.x += dx; 
+                p.y += dy; 
+            });
+            
             rebuildLines(draggingShapeIdx);
-            dragStartWorldX = worldX; dragStartWorldY = worldY;
-            render(); return;
+            dragStartWorldX = worldX; 
+            dragStartWorldY = worldY;
+            render(); 
+            return;
         }
 
         if (isDrawing && shapes[activeS] && !shapes[activeS].isClosed) {
@@ -520,7 +536,10 @@
     }
 
     function handleUp(e) {
-        isCameraPanning = false; draggingShapeIdx = null; initialPinchDist = null;
+        isCameraPanning = false; 
+        draggingShapeIdx = null; 
+        initialPinchDist = null;
+        canvas.style.cursor = "crosshair"; 
     }
 
     function rebuildLines(sIdx) {
@@ -613,7 +632,7 @@
         calculateArea(selectedShapeIdx);
         
         if (closePopup) { document.getElementById('editPopup').style.display = 'none'; selectedLineIdx = null; }
-        render(); updateDataSheet();
+        render(); 
     }
 
     function calculateArea(sIdx) {
@@ -626,56 +645,37 @@
         s.area = Math.abs(area / 2);
     }
 
-    function updateDataSheet() {
-        const tbody = document.getElementById('areaTableBody');
-        tbody.innerHTML = '';
-        let grandTotal = 0;
-        let hasData = false;
-
-        shapes.forEach((s, idx) => {
-            if(s.isClosed && s.area > 0) {
-                hasData = true;
-                if (s.type === 'add') {
-                    grandTotal += s.area;
-                    tbody.innerHTML += `<tr>
-                        <td>${idx + 1}</td>
-                        <td style="font-weight:bold; color:#1e3a8a;">${s.name} (+)</td>
-                        <td>${s.area.toFixed(2)}</td>
-                    </tr>`;
-                } else {
-                    grandTotal -= s.area; 
-                    tbody.innerHTML += `<tr class="minus-row">
-                        <td>${idx + 1}</td>
-                        <td style="font-weight:bold;">${s.name} (Minus)</td>
-                        <td>- ${s.area.toFixed(2)}</td>
-                    </tr>`;
-                }
-            }
-        });
-
-        if(!hasData) tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#64748b;">No completed shapes yet.</td></tr>`;
-        document.getElementById('totalAreaDisplay').innerText = grandTotal.toFixed(2) + " Sq.M";
-    }
-
     function triggerPrint() {
         isPrintMode = true; 
         document.getElementById('editPopup').style.display = 'none';
         selectedLineIdx = null;
         selectedShapeIdx = null;
+
+        const origW = canvas.width;
+        const origH = canvas.height;
+
+        canvas.width = A4_WIDTH;
+        canvas.height = A4_HEIGHT;
+        
+        render(); 
+
+        let printImg = document.getElementById('printOutput');
+        printImg.src = canvas.toDataURL('image/png'); 
+
+        canvas.width = origW;
+        canvas.height = origH;
+        isPrintMode = false;
         render(); 
         
-        window.print();
-        
-        setTimeout(() => {
-            isPrintMode = false;
-            render();
-        }, 1000);
+        setTimeout(() => { window.print(); }, 200);
     }
 
     function render() {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
+        ctx.save(); 
+
         ctx.fillStyle = '#94a3b8';
         if(isPrintMode) ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -701,21 +701,37 @@
             for(let g = 0; g < A4_HEIGHT; g += baseScale) { ctx.beginPath(); ctx.moveTo(0, g); ctx.lineTo(A4_WIDTH, g); ctx.stroke(); }
         }
 
+        // --- NEW 0.75 INCH DOUBLE BORDER LAYOUT ---
+        const margin = 72; // ഏകദേശം 0.75 inch ഇൻ പിക്സൽസ് (800x1131 റസല്യൂഷനിൽ)
+        
+        ctx.strokeStyle = isPrintMode ? '#000000' : '#94a3b8';
+        ctx.lineWidth = 2;
+        // പുറത്തുള്ള ലൈൻ
+        ctx.strokeRect(margin, margin, A4_WIDTH - (margin * 2), A4_HEIGHT - (margin * 2));
+        // ഉള്ളിലുള്ള ലൈൻ (Double line boundary)
+        ctx.strokeRect(margin + 4, margin + 4, A4_WIDTH - (margin * 2) - 8, A4_HEIGHT - (margin * 2) - 8);
+
+        // Header Box (ഡബിൾ ലൈനിന് ഉള്ളിലായി)
+        const contentX = margin + 4;
+        const contentY = margin + 4;
+        const contentW = A4_WIDTH - (margin * 2) - 8;
+
+        ctx.strokeStyle = isPrintMode ? '#000000' : '#cbd5e1';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(contentX, contentY, contentW, 90);
+
         ctx.fillStyle = isPrintMode ? '#000000' : '#0f172a';
         ctx.font = 'bold 16px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText("BUILDING PLINTH AREA SKETCH", A4_WIDTH / 2, 40);
+        ctx.fillText("BUILDING PLINTH AREA SKETCH", A4_WIDTH / 2, contentY + 25);
         
         ctx.font = '12px Arial';
         ctx.textAlign = 'left';
-        ctx.fillText(`Owner Name : ${document.getElementById('ownerName').value}`, 30, 70);
-        ctx.fillText(`Address    : ${document.getElementById('ownerAddress').value.replace(/\n/g, ", ")}`, 30, 90);
-        ctx.fillText(`Survey No  : ${document.getElementById('surveyNo').value}`, 30, 110);
-        
-        ctx.strokeStyle = isPrintMode ? '#000000' : '#cbd5e1';
-        ctx.lineWidth = 1.2;
-        ctx.strokeRect(20, 20, A4_WIDTH - 40, 100);
+        ctx.fillText(`Owner Name : ${document.getElementById('ownerName').value}`, contentX + 15, contentY + 50);
+        ctx.fillText(`Address        : ${document.getElementById('ownerAddress').value.replace(/\n/g, ", ")}`, contentX + 15, contentY + 65);
+        ctx.fillText(`Survey No    : ${document.getElementById('surveyNo').value}`, contentX + 15, contentY + 80);
 
+        // --- DRAW SHAPES ---
         if (isDrawing && shapes[activeS] && !shapes[activeS].isClosed && !isPrintMode) {
             const s = shapes[activeS];
             const startPt = s.points[0];
@@ -818,19 +834,94 @@
             });
         });
 
-        ctx.fillStyle = isPrintMode ? '#000000' : '#475569';
-        ctx.font = `bold ${14/(isPrintMode?1:cameraZoom)}px Arial`;
-        ctx.textAlign = 'left';
-        ctx.fillText(`Scale: 1 Meter = ${baseScale} Pixels (Approx)`, 30, A4_HEIGHT - 30);
+        // --- DRAW AREA TABLE ON CANVAS (Bottom Left, ഉള്ളിലായി) ---
+        let validShapes = shapes.filter(s => s.isClosed && s.area > 0);
+        if (validShapes.length > 0) {
+            let startX = contentX + 15; // മാർജിനിന് ഉള്ളിലായി
+            let rowHeight = 22;
+            let col1W = 40, col2W = 180, col3W = 100;
+            let tableWidth = col1W + col2W + col3W;
+            let startY = A4_HEIGHT - margin - 35 - ((validShapes.length + 2) * rowHeight); // താഴത്തെ മാർജിൻ വിട്ട്
 
-        ctx.setTransform(1, 0, 0, 1, 0, 0); 
+            ctx.fillStyle = isPrintMode ? '#ffffff' : 'rgba(255, 255, 255, 0.9)';
+            ctx.fillRect(startX, startY - 25, tableWidth, (validShapes.length + 2) * rowHeight + 25);
+
+            ctx.fillStyle = isPrintMode ? '#000000' : '#0f172a';
+            ctx.font = 'bold 13px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText("AREA STATEMENT", startX, startY - 8);
+
+            ctx.strokeStyle = isPrintMode ? '#000000' : '#475569';
+            ctx.lineWidth = 1;
+
+            ctx.strokeRect(startX, startY, col1W, rowHeight);
+            ctx.strokeRect(startX + col1W, startY, col2W, rowHeight);
+            ctx.strokeRect(startX + col1W + col2W, startY, col3W, rowHeight);
+            
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText("SL", startX + 10, startY + 16);
+            ctx.fillText("Description", startX + col1W + 10, startY + 16);
+            ctx.fillText("Area (Sq.M)", startX + col1W + col2W + 10, startY + 16);
+
+            let currentY = startY + rowHeight;
+            let totalArea = 0;
+
+            ctx.font = '12px Arial';
+            validShapes.forEach((s, idx) => {
+                ctx.strokeRect(startX, currentY, col1W, rowHeight);
+                ctx.strokeRect(startX + col1W, currentY, col2W, rowHeight);
+                ctx.strokeRect(startX + col1W + col2W, currentY, col3W, rowHeight);
+
+                ctx.fillStyle = isPrintMode ? '#000000' : '#0f172a';
+                ctx.fillText(idx + 1, startX + 10, currentY + 16);
+                
+                let nameTxt = s.name;
+                if(s.type === 'sub') {
+                    nameTxt += ' (Void)';
+                    ctx.fillStyle = '#ef4444';
+                } else {
+                    ctx.fillStyle = '#1e3a8a';
+                }
+                if (isPrintMode) ctx.fillStyle = '#000000';
+                
+                ctx.fillText(nameTxt, startX + col1W + 10, currentY + 16);
+
+                let areaStr = s.area.toFixed(2);
+                if(s.type === 'sub') {
+                    areaStr = "- " + areaStr;
+                    totalArea -= s.area;
+                } else {
+                    totalArea += s.area;
+                }
+                ctx.fillText(areaStr, startX + col1W + col2W + 10, currentY + 16);
+
+                currentY += rowHeight;
+            });
+
+            ctx.strokeRect(startX, currentY, col1W + col2W, rowHeight);
+            ctx.strokeRect(startX + col1W + col2W, currentY, col3W, rowHeight);
+            
+            ctx.fillStyle = isPrintMode ? '#000000' : '#0f172a';
+            ctx.font = 'bold 13px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText("Total Net Area : ", startX + col1W + col2W - 10, currentY + 16);
+            ctx.textAlign = 'left';
+            ctx.fillText(totalArea.toFixed(2) + " Sq.M", startX + col1W + col2W + 10, currentY + 16);
+        }
+
+        ctx.fillStyle = isPrintMode ? '#000000' : '#475569';
+        ctx.font = 'bold 13px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`Scale: 1 Meter = ${baseScale} Pixels (Approx)`, contentX + 15, A4_HEIGHT - margin - 15);
+
+        ctx.restore(); 
     }
 
     function resetCanvas() {
         if(confirm("എല്ലാം മായ്ച്ചു പുതിയത് വരയ്ക്കണമെന്നുറപ്പാണോ?")) {
             saveHistory(); shapes = []; document.getElementById('editPopup').style.display = 'none';
             document.getElementById('modeDraw').checked = true; 
-            addNewShape(); updateDataSheet(); render();
+            addNewShape(); render();
         }
     }
 
